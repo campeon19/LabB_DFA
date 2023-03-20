@@ -3,6 +3,8 @@ import graphviz
 
 # La clase Nodo representa un nodo en el árbol de expresiones regulares
 
+OPERATORS = ['|', '.', '*', '+', '?', '(', ')']
+
 
 class Node:
     def __init__(self, data):
@@ -20,7 +22,7 @@ def build_tree(postfix):
     # Se recorre la expresión regular
     for c in postfix:
         # Si se encuentra un simbolo alfanumerico se crea un nodo con el simbolo y se agrega a la pila
-        if c.isalnum():
+        if c not in OPERATORS:
             stack.append(Node(c))
         # Si se encuentra un operador unario se crea un nodo con el operador y se saca un nodo de la pila y se agrega como hijo del nodo creado
         elif c == '*' or c == '?' or c == '+':

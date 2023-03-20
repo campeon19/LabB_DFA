@@ -467,17 +467,15 @@ def regex_to_afd(regex):
                 # print(afd.get_estado(k[2]))
                 estado.agregar_trancision(k[1], afd.get_estado(k[2]))
 
-    # graph = draw_tree(arbol)
-    # graph.format = 'png'
-    # graph.render('tree2', view=False)
+    graph = draw_tree(arbol)
+    graph.format = 'png'
+    graph.render('tree2', view=False)
     return afd
 
 
-# regex = 'ac.c.bc.d.|#.'
-# regex = 'db|c|a|ε|db|.d*.#.'
-# regex = 'ab|*a.b.b.#.'
-# regex = 'ab*.a.b*.#.'
-regex = 'a*b*|c.#.'
+# regex = 'a*b*|c.#.'
+# regex = 'bb|*a.b.b.ab|*.#.'
+regex = 'ab|*a.ab|.ab|.#.'
 
 afd = regex_to_afd(regex)
 afd.draw_afd()

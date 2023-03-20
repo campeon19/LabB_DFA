@@ -267,6 +267,9 @@ class AFD:
     def get_estados(self):
         return self.estados
 
+    def get_estados_finales(self):
+        return self.estados_finales
+
     def draw_afd(self):
         dot = Digraph(comment='AFD')
         for estado in self.estados_finales:
@@ -282,6 +285,17 @@ class AFD:
         dot.format = 'png'
         dot.attr(rankdir='LR')
         dot.render('AFD.gv', view=True)
+
+    def get_estado(self, id):
+        for estado in self.estados_finales:
+            print(estado.id)
+            if estado.id == id:
+                return estado
+
+    def get_estado_inicial(self):
+        for estado in self.estados:
+            if estado.id == 0:
+                return estado
 
 
 def cerradura_epsilon(connjunto, afn):
@@ -309,6 +323,7 @@ def mover(conjunto, simbolo):
 def afd_from_afn(afn, alfabeto):
     afd = AFD()
     id = 0
+    id2 = 0
     alfabeto = alfabeto
     conjunto_estados = {}
     # Se obtiene el estado inicial del AFN
@@ -318,6 +333,7 @@ def afd_from_afn(afn, alfabeto):
     estados_por_visitar = [id]
     id += 1
     while estados_por_visitar:
+        # print(estados_por_visitar)
         conjunto = estados_por_visitar.pop()
         for simbolo in alfabeto:
             estados_siguientes = cerradura_epsilon(
@@ -329,12 +345,34 @@ def afd_from_afn(afn, alfabeto):
                     id += 1
                 for key, value in conjunto_estados.items():
                     if estados_siguientes == value:
-                        estado = Estado(conjunto)
-                        estado.agregar_trancision(
-                            simbolo, Estado(key))
+                        # print(conjunto, simbolo, key)
+                        val = False
+                        for estado in afd.estados:
+                            if estado.id == conjunto:
+                                estado.agregar_trancision(
+                                    simbolo, Estado(key))
+                                val = True
+                                break
+                        if not val:
+                            estado = Estado(conjunto)
+                            estado.agregar_trancision(
+                                simbolo, Estado(key))
                         afd.estados.add(estado)
+    # check if all state in conjunto_estados are in afd.estados. If not, add them
+    for key, value in conjunto_estados.items():
+        val = False
+        for estado in afd.estados:
+            if estado.id == key:
+                val = True
+                break
+        if not val:
+            estado = Estado(key)
+            afd.estados.add(estado)
     for key, value in conjunto_estados.items():
         if afn.estado_final.id in value:
+            for estado in afd.estados:
+                if estado.id == key:
+                    estado.es_final = True
             afd.estados_finales.add(Estado(key, True))
         else:
             afd.estados_finales.add(Estado(key))
@@ -342,6 +380,39 @@ def afd_from_afn(afn, alfabeto):
     print("afd created")
     print(conjunto_estados)
     return afd
+
+
+def simular_afn(afn, cadena):
+    estados_actuales = cerradura_epsilon([afn.estado_inicial.id], afn)
+    cadena_aceptada = False
+    for char in cadena:
+        estados_siguientes = []
+        for estado in estados_actuales:
+            for estado_siguiente in afn.get_estado(estado).get_trancisiones(char):
+                estados_siguientes += cerradura_epsilon(
+                    [estado_siguiente.id], afn)
+        estados_actuales = estados_siguientes
+    for estado in estados_actuales:
+        if afn.get_estado(estado).es_final:
+            cadena_aceptada = True
+    return cadena_aceptada
+
+
+def simular_afd(afd, cadena):
+    estado_actual = afd.get_estado_inicial()
+    cadena_aceptada = False
+    # print(estado_actual.id)
+    for char in cadena:
+        # print(char)
+        estado_siguiente = estado_actual.get_trancisiones(char)
+        if estado_siguiente:
+            estado_actual = estado_siguiente[0]
+            # print(estado_actual.id)
+        else:
+            return False
+    if estado_actual.es_final:
+        cadena_aceptada = True
+    return cadena_aceptada
 
 
 def get_alfabet(expresion_regular):
@@ -355,21 +426,84 @@ def get_alfabet(expresion_regular):
 OPERADORES = [EPSILON, CONCAT, UNION, STAR, QUESTION, PLUS]
 PARENTESIS = ['(', ')']
 
-# get a dictionary with the states of the afn as keys and its trancisions as values
+
+def afd_minimization(afd, alfabet):
+    alfabet = sorted(alfabet)
+    nuevo_afd = AFD()
+    estados_finales = []
+    estados_no_finales = []
+    for estado in afd.estados:
+        if estado.es_final:
+            estados_finales.append(estado)
+        else:
+            estados_no_finales.append(estado)
+    conjunto_estado = [
+        {"conjunto": {0: estados_no_finales, 1: estados_finales}, "table": {}}]
+    # table creation
+    estados_afd = afd.estados
+    # order estados_afd by id
+    estados_afd = sorted(estados_afd, key=lambda x: x.id)
+    divisible = True
+
+    # for estado in estados_afd:
+    #     for simbolo in alfabet:
+    #         est = estado.get_trancisiones(simbolo)[0].id
+    #         print(conjunto_estado[0]['conjunto'])
+    #         for key, value in conjunto_estado[0]["conjunto"].items():
+    #             for v in value:
+    #                 if v.id == est:
+    #                     est = key
+    #         print(est)
+    #         if estado.id not in conjunto_estado[0]["table"]:
+    #             conjunto_estado[0]["table"][estado.id] = [est]
+    #         else:
+    #             conjunto_estado[0]["table"][estado.id].append(
+    #                 est)
+    # print(conjunto_estado[0]["table"])
+    # # validar si se puede divir el conjunto
+    # for key, value in conjunto_estado[0]["conjunto"].items():
+    #     if len(value) > 1:
+    #         for simbolo in alfabet:
+    #             for estado in value:
+    #                 if estado.get_trancisiones(simbolo)[0].id != value[0].get_trancisiones(simbolo)[0].id:
+    #                     print("se puede dividir")
+    #                     break
+
+    for simbolo in alfabet:
+        for estado in estados_afd:
+            # conjunto_estado[0]["table"][simbolo] = estado.get_trancisiones(simbolo)[
+            #     0].id
+            est = estado.get_trancisiones(simbolo)[0].id
+            print(conjunto_estado[0]['conjunto'])
+            for key, value in conjunto_estado[0]["conjunto"].items():
+                for v in value:
+                    if v.id == est:
+                        est = key
+            print(est)
+            if simbolo not in conjunto_estado[0]["table"]:
+                conjunto_estado[0]["table"][simbolo] = [est]
+            else:
+                conjunto_estado[0]["table"][simbolo].append(
+                    est)
+    print(conjunto_estado[0]["table"])
+    # validar si se puede divir el conjunto
+    new_conjunto = {}
+    id = 0
+    # validate if in the table the same value is in the same row and this item is in the same set
 
 
-def get_estados(afn):
-    estados = {}
-    set_estados = afn.get_estados()
-    for estado in set_estados:
-        estados[estado.id] = estado.trancisiones
-    return estados
+# def dfa_from_regex(regex):
 
-
-regex = 'ab|'
+regex = 'a*b*|c.'
+# regex = "bb|*a.b.b.ab|*."
+# regex = "ab|*a.ab|.ab|."
 alfabet = get_alfabet(regex)
 print(alfabet)
 afn = postfix_to_afn(regex)
+afn.print_afn()
 print("afn created")
 afd = afd_from_afn(afn, alfabet)
+print(simular_afd(afd, "abb"))
+print(simular_afn(afn, "abababba"))
+estados = afd.get_estados()
 afd.draw_afd()

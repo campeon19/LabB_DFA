@@ -3,6 +3,8 @@ import os
 # Si da problemas el path de graphviz, agregar la siguiente linea de codigo
 os.environ["PATH"] += os.pathsep + 'C:\Program Files\Graphviz\bin'
 
+OPERATORS = ['|', '.', '*', '+', '?', '(', ')']
+
 # La funcion shunting_yard() es la encargada de convertir la expresion regular de infijo a postfijo
 
 
@@ -52,16 +54,16 @@ def add_concatenation(exp):
         # Si se encuentra un * seguido de un simbolo alfanumerico se agrega el operador de concatenacion (.)
         # Si se encuentra un + seguido de un simbolo alfanumerico se agrega el operador de concatenacion (.)
         # Si se encuentra un ? seguido de un simbolo alfanumerico se agrega el operador de concatenacion (.)
-        if char.isalnum() and i < len(exp) - 1 and exp[i + 1].isalnum() or \
-                char == ')' and i < len(exp) - 1 and exp[i + 1].isalnum() or \
-                char.isalnum() and i < len(exp) - 1 and exp[i + 1] == '(' or \
+        if char not in OPERATORS and i < len(exp) - 1 and exp[i + 1] not in OPERATORS or \
+                char == ')' and i < len(exp) - 1 and exp[i + 1] not in OPERATORS or \
+                char not in OPERATORS and i < len(exp) - 1 and exp[i + 1] == '(' or \
                 char == ')' and i < len(exp) - 1 and exp[i + 1] == '(' or \
                 char == '*' and i < len(exp) - 1 and exp[i + 1] == '(' or \
                 char == '+' and i < len(exp) - 1 and exp[i + 1] == '(' or \
                 char == '?' and i < len(exp) - 1 and exp[i + 1] == '(' or \
-                char == '*' and i < len(exp) - 1 and exp[i + 1].isalnum() or \
-                char == '+' and i < len(exp) - 1 and exp[i + 1].isalnum() or \
-                char == '?' and i < len(exp) - 1 and exp[i + 1].isalnum():
+                char == '*' and i < len(exp) - 1 and exp[i + 1] not in OPERATORS or \
+                char == '+' and i < len(exp) - 1 and exp[i + 1] not in OPERATORS or \
+                char == '?' and i < len(exp) - 1 and exp[i + 1] not in OPERATORS:
             output.append(char)
             output.append('.')
         else:

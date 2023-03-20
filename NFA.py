@@ -245,3 +245,33 @@ def postfix_to_afn(postfix):
             newAFN = AFN(estado_inicial, estado_final)
             stack.append(newAFN)
     return stack.pop()
+
+
+def cerradura_epsilon(connjunto, afn):
+    estados_visitados = []
+    estados_por_visitar = []
+    for estado in connjunto:
+        estados_por_visitar.append(estado)
+    while estados_por_visitar:
+        estado = estados_por_visitar.pop()
+        if estado not in estados_visitados:
+            estados_visitados.append(estado)
+            for estado_siguiente in afn.get_estado(estado).get_trancisiones(EPSILON):
+                estados_por_visitar.append(estado_siguiente.id)
+    return estados_visitados
+
+
+def simular_afn(afn, cadena):
+    estados_actuales = cerradura_epsilon([afn.estado_inicial.id], afn)
+    cadena_aceptada = False
+    for char in cadena:
+        estados_siguientes = []
+        for estado in estados_actuales:
+            for estado_siguiente in afn.get_estado(estado).get_trancisiones(char):
+                estados_siguientes += cerradura_epsilon(
+                    [estado_siguiente.id], afn)
+        estados_actuales = estados_siguientes
+    for estado in estados_actuales:
+        if afn.get_estado(estado).es_final:
+            cadena_aceptada = True
+    return cadena_aceptada
