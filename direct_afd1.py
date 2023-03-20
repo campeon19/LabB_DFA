@@ -1,6 +1,7 @@
 
 import graphviz
 OPERATORS = ['|', '.', '*', '+', '?', '(', ')']
+PARENTESIS = ['(', ')']
 
 
 class Trancision:
@@ -54,7 +55,7 @@ class AFD:
 
     def draw_afd(self):
         dot = graphviz.Digraph(comment='AFD')
-        for estado in self.estados_finales:
+        for estado in self.estados:
             if estado.es_final:
                 dot.node(str(estado.id), str(estado.id), shape="doublecircle")
             else:
@@ -69,8 +70,8 @@ class AFD:
         dot.render('AFD2', view=True)
 
     def get_estado(self, id):
-        for estado in self.estados_finales:
-            print(estado.id)
+        for estado in self.estados:
+            # print(estado.id)
             if estado.id == id:
                 return estado
 
@@ -85,6 +86,7 @@ class Node:
         self.primera_posicion = set()
         self.ultima_posicion = set()
         self.siguiente_posicion = set()
+        self.siguientes_posiciones = []
 
 
 def build_tree(postfix):
@@ -127,6 +129,7 @@ def draw_tree(root):
             up = [str(x) for x in node.ultima_posicion]
             r = node.valor + " " + str(pp) + " " + \
                 str(up) + " " + str(node.nulabilidad)
+            s = [str(x) for x in node.siguiente_posicion]
             dot.node(str(id(node)), str(r))
             # Si el nodo tiene un hijo izquierdo se crea una arista entre el nodo y el hijo izquierdo
             if node.izquierda:
@@ -259,43 +262,28 @@ table = []
 
 
 def calculate_follow_position(arbol):
-
+    val = True
     if arbol:
 
         if arbol.valor == '.':
             for i in arbol.izquierda.ultima_posicion:
-                for j in arbol.derecha.primera_posicion:
-                    # arbol.siguientes_posiciones[i].append(j)
-                    for k in table:
-                        if k[0] == i:
-                            k[2].append(j)
-                    else:
-                        simbol = get_val_from_node(arbol, i)
-                        table.append([i, simbol, [j]])
-                    # if i in table:
-                    #     table[i][2].append(j)
-                    # else:
-                    #     simbol = get_val_from_node(arbol, i)
-                    #     table.append([i, arbol.izquierda.valor, [j]])
-            # else:
-            #     for i in arbol.izquierda.ultima_posicion:
-            #         for j in arbol.derecha.primera_posicion:
-            #             # arbol.siguientes_posiciones[i].append(j)
-            #             for k in table:
-            #                 if k[0] == i:
-            #                     k[2].append(j)
-            #             else:
-            #                 simbol = get_val_from_node(arbol, i)
-            #                 table.append([i, simbol, [j]])
+                for k in table:
+                    if k[0] == i:
+                        k[2].extend(list(arbol.derecha.primera_posicion))
+                        val = False
+                if val:
+                    simbol = get_val_from_node(arbol, i)
+                    table.append(
+                        [i, simbol, list(arbol.derecha.primera_posicion)])
         elif arbol.valor == '*':
             for i in arbol.ultima_posicion:
-                for j in arbol.primera_posicion:
-                    for k in table:
-                        if k[0] == i:
-                            k[2].append(j)
-                        else:
-                            simbol = get_val_from_node(arbol, i)
-                            table.append([i, simbol, [j]])
+                for k in table:
+                    if k[0] == i:
+                        k[2].extend(list(arbol.primera_posicion))
+                        val = False
+                if val:
+                    simbol = get_val_from_node(arbol, i)
+                    table.append([i, simbol, list(arbol.primera_posicion)])
                     # arbol.siguientes_posiciones[i].append(j)
         val = False
         for k in table:
@@ -335,80 +323,161 @@ def get_siguiente_posicion(tab, id):
             return i[2]
 
 
+def Trans(state, simbol, tab):
+    conj = []
+    for i in state:
+        for j in tab:
+            if j[0] == i and j[1] == simbol:
+                for k in j[2]:
+                    if k not in conj:
+                        conj.append(k)
+    return conj
+
+
+def get_simbols(tab):
+    simbols = []
+    for i in tab:
+        if i[1] not in simbols:
+            simbols.append(i[1])
+    return simbols
+
+
+def get_final_state(tab):
+    final_state = None
+    for i in tab:
+        if i[1] == '#':
+            final_state = i[0]
+    return final_state
+
+
 def regex_to_afd(regex):
 
     arbol = build_tree(regex)
-    # print(arbol.valor)
-    # nulabilidad(arbol)
     calculate_nullable(arbol)
     traverse_postorder(arbol, calculate_nullable)
     calculate_first_position(arbol)
     calculate_last_position(arbol)
     calculate_follow_position(arbol)
-    # order table
     tab = sorted(table, key=lambda x: x[0])
-    print(tab)
     root = arbol.primera_posicion
-
+    alfabeto = get_simbols(tab)
+    # remove # from alphabet
+    alfabeto.remove('#')
+    id_estado = 0
     afd = AFD()
-    transiciones = {}
+    conjunto_estados = {}
+    transiciones = []
     id = 0
-    for i in root:
-        transiciones[id] = get_siguiente_posicion(tab, i)
-        id += 1
-    print(transiciones[1])
-    # for key, value in transiciones.items():
-    #     estado = Estado(key)
-    #     afd.estados.add(estado)
+    x = []
+    for y in root:
+        x.append(y)
+    conjunto_estados[id] = x
+    print(conjunto_estados)
+    id += 1
+    estados_visitados = []
+    estados_por_visitar = []
+    # print(conjunto_estados[0])
+    estados_por_visitar.append(conjunto_estados[0])
+    # print(alfabeto)
+    # afd.estados.add(es)
+    final = get_final_state(tab)
+    print(tab)
+    while len(estados_por_visitar) > 0:
+        estado_actual = estados_por_visitar.pop()
+        print(estado_actual)
+        estados_visitados.append(estado_actual)
+        for simbolo in alfabeto:
+            print(simbolo)
+            transicion = Trans(estado_actual, simbolo, tab)
+            # print(id)
 
-    # while True:
-    #     for key, value in transiciones.items():
-    #         for i in value:
-    #             estado = Estado(key)
-    #             estado2 = Estado(i)
-    #             afd.agregar_transicion(
-    #                 estado, get_val_from_node(arbol, i), estado2)
-    #     break
+            # print(transicion)
+            # if transicion is not an empty list
+            # if transicion != []:
+            transicion = sorted(transicion)
+            # print(transicion)
 
-    # afd.draw_afd()
+            if transicion != [] and not None:
+                transiciones.append([estado_actual, simbolo, transicion])
+                if transicion not in estados_visitados and transicion not in estados_por_visitar:
+                    print('not in estados_visitados and estados_por_visitar')
+                    print(transicion)
+                    conjunto_estados[id] = transicion
+                    print(conjunto_estados)
+                    estados_por_visitar.append(transicion)
+                    estados_por_visitar = sorted(
+                        estados_por_visitar, reverse=True)
+                    print("estados por visitar")
+                    print(estados_por_visitar)
+                    id += 1
+            # if len(estados_por_visitar) == 0:
+            #     estados_num = []
+            #     for k in new_transiciones:
+            #         estados_num.append(k[0])
+            #     if len(estados_num) < len(conjunto_estados):
 
-    graph = draw_tree(arbol)
-    graph.format = 'png'
-    graph.render('tree2', view=False)
-    # print arbol in console. For every node, print its value, nullability
-    # print(arbol[-1].valor, arbol[-1].nulabilidad)
-    return afd
+    # if list in value in conjunto_estados.values() is NULL, delete item
+    # validate if all nodes
 
+    for key, value in conjunto_estados.items():
+        if value == []:
+            del conjunto_estados[key]
+            break
+    print(conjunto_estados)
+    # print()
+    # print(transiciones)
 
-def construir_afn(tabla):
-    afd = AFD()
-    estado_inicial = Estado(0)
-    estado_final = Estado(1)
-    afd.estados_iniciales.add(estado_inicial)
-    afd.estados.add(estado_inicial)
-    afd.estados.add(estado_final)
-    afd.agregar_transicion(estado_inicial, tabla[0][1], estado_final)
-    estado_anterior = estado_final
-    posiciones_finales = []
-    for fila in tabla[1:]:
-        nuevo_estado = Estado(len(afd.estados))
-        afd.estados.add(nuevo_estado)
-        afd.agregar_transicion(estado_anterior, fila[1], nuevo_estado)
-        if fila[2] == []:
-            afd.estados_finales.add(nuevo_estado)
-        else:
-            posiciones_finales.append((nuevo_estado, fila[2][0]))
-        estado_anterior = nuevo_estado
-    for (estado, posicion) in posiciones_finales:
-        nuevo_estado_final = Estado(len(afd.estados))
-        afd.estados.add(nuevo_estado_final)
-        afd.agregar_transicion(estado, posicion, nuevo_estado_final)
-        afd.estados_finales.add(nuevo_estado_final)
+    # sustituir en transiciones: estado_actual por id
+    new_transiciones = []
+    for key, value in conjunto_estados.items():
+        for i in transiciones:
+            if i[0] == value:
+                new_transiciones.append([key, i[1], i[2]])
+    # sustituir en transiciones: transicion por id
+    for key, value in conjunto_estados.items():
+        for i in new_transiciones:
+            if i[2] == value:
+                i[2] = key
+
+    print(new_transiciones)
+
+    estados_num = []
+    for key, value in conjunto_estados.items():
+        estados_num.append(key)
+    # for k in new_transiciones:
+    #     estados_num.append(k[0])
+    estados_num = set(estados_num)
+    for e in estados_num:
+        print(e)
+        es = Estado(e)
+        # is final state
+        for key, value in conjunto_estados.items():
+            # print(final in value)
+            if key == e and final in value:
+                # print("entro")
+                es.es_final = True
+        afd.estados.add(es)
+
+    for estado in afd.estados:
+        for k in new_transiciones:
+            # print(k[0], estado.id)
+            if k[0] == estado.id:
+                # print("entro")
+                # print(k[2])
+                # print(afd.get_estado(k[2]))
+                estado.agregar_trancision(k[1], afd.get_estado(k[2]))
+
+    # graph = draw_tree(arbol)
+    # graph.format = 'png'
+    # graph.render('tree2', view=False)
     return afd
 
 
 # regex = 'ac.c.bc.d.|#.'
-regex = 'db|c|a|ε|db|.d*.#.'
+# regex = 'db|c|a|ε|db|.d*.#.'
+# regex = 'ab|*a.b.b.#.'
+# regex = 'ab*.a.b*.#.'
+regex = 'a*b*|c.#.'
 
-arbol = regex_to_afd(regex)
-# afd = construir_afn(table)
+afd = regex_to_afd(regex)
+afd.draw_afd()
